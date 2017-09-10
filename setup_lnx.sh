@@ -164,42 +164,8 @@ if [ "$SDL" == "1" ]; then
   g++ -w libqbx_lnx.o qbx.cpp `sdl-config --cflags --libs` -lSDL_mixer -lSDL_ttf -lSDL_net -lSDL_image -lX11 -o ../../qb64
   cd ../..
 else
-
-  ### GL installation process
-  find . -name "*.sh" -exec chmod +x {} \;
-  find . -type f -iname "*.a" -exec rm -f {} \;
-  find . -type f -iname "*.o" -exec rm -f {} \;
-  rm ./internal/temp/*
-
-  echo "Building library 'LibQB'"
-  cd internal/c/libqb/os/lnx
-  rm -f libqb_setup.o
-  ./setup_build.sh
-  cd ../../../../..
-
-  echo "Building library 'FreeType'"
-  cd internal/c/parts/video/font/ttf/os/lnx
-  rm -f src.o
-  ./setup_build.sh
-  cd ../../../../../../../..
-
-  echo "Building User Additions"
-  cd internal/c/parts/user_mods/os/lnx
-  rm -f src.a
-  ./setup_build.sh
-  cd ../../../../../..
-
-  echo "Building library 'Core:FreeGLUT'"
-  cd internal/c/parts/core/os/lnx
-  rm -f src.a
-  ./setup_build.sh
-  cd ../../../../../..
-
-  echo "Building 'QB64'"
-  cp -r ./internal/source/* ./internal/temp/
-  cd internal/c
-  g++ -w qbx.cpp parts/user_mods/os/lnx/src.a libqb/os/lnx/libqb_setup.o parts/video/font/ttf/os/lnx/src.o parts/core/os/lnx/src.a -lGL -lGLU -lX11 -lpthread -ldl -lrt -D FREEGLUT_STATIC -DDEPENDENCY_USER_MODS -o ../../qb64
-  cd ../..
+  make clean
+  make BUILD_QB64=y
 fi
 
 if [ -e "./qb64" ]; then

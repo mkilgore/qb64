@@ -11743,6 +11743,8 @@ ver$ = Version$ 'eg. "0.123"
 x = INSTR(ver$, "."): IF x THEN ASC(ver$, x) = 95 'change "." to "_"
 libs$ = ""
 
+' This stuff should be changed to simply call make with the correct parameters
+
 IF DEPENDENCY(DEPENDENCY_GL) THEN
     IF Cloud THEN a$ = "GL not supported on QLOUD": GOTO errmes '***NOCLOUD***
     defines$ = defines$ + defines_header$ + "DEPENDENCY_GL"
@@ -23231,6 +23233,8 @@ END IF
 END SUB
 
 SUB Build (path$)
+
+' This can likely be tossed out completely once make works for all the platforms
 
 'Count the separators in the path
 depth = 1
