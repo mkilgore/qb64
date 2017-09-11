@@ -41,15 +41,20 @@ all: $(EXE)
 
 CLEAN_LIST :=
 
-CXXFLAGS := -w -DFREEGLUT_STATIC
+CXXFLAGS := -w
 
 ifeq ($(OS),lnx)
 	CXXLIBS := -lGL -lGLU -lX11 -lpthread -ldl -lrt
+	CXXFLAGS += -DFREEGLUT_STATIC
 endif
 
 ifeq ($(OS),win)
 	CXXLIBS := -static-libgcc -static-libstdc++
-	CXXFLAGS += -DGLEW_STATIC
+	CXXFLAGS += -DGLEW_STATIC -DFREEGLUT_STATIC
+endif
+
+ifeq ($(OS),osx)
+	CXXLIBS := -framework OpenGL -framework IOKit -framework GLUT -framework Cocoa
 endif
 
 QB_QBX_OBJ := $(PATH_INTERNAL_C)/qbx.o
@@ -222,8 +227,13 @@ endif
 
 QBLIB := $(PATH_INTERNAL_C)/libqb/os/lnx/$(QBLIB_NAME).o
 
+ifneq ($(OS),osx)
 $(QBLIB): $(PATH_INTERNAL_C)/libqb.cpp
 	$(CXX) $(CXXFLAGS) $< -c -o $@
+else
+$(QBLIB): $(PATH_INTERNAL_C)/libqb.mm
+	$(CXX) $(CXXFLAGS) $< -c -o $@
+endif
 
 # QBLIB has to go first to ensure correct linking
 EXE_OBJS := $(QBLIB) $(EXE_OBJS)
