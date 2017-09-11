@@ -2,13 +2,33 @@
 QB_VERSION := 1.1
 QB_VERSION_UNDERSCORE := $(patsubst .,_,$(QB_VERSION))
 
-OS := lnx
-# EXE := $(firstword $(MAKECMDGOALS))
+PATH_INTERNAL := ./internal
+PATH_INTERNAL_C := $(PATH_INTERNAL)/c
+
+ifndef OS
+	OS := lnx
+endif
+
+ifeq ($(OS),lnx)
+	CP := cp
+	RM := rm -fr
+endif
+
+ifeq ($(OS),win)
+	CP := copy
+	AR := $(PATH_INTERNAL_C)/c_compiler/bin/ar.exe
+	CC := $(PATH_INTERNAL_C)/c_compiler/bin/gcc.exe
+	CXX := $(PATH_INTERNAL_C)/c_compiler/bin/c++.exe
+	RM := del
+endif
+
 ifdef BUILD_QB64
 	EXE := qb64
 else
 
 ifneq ($(filter clean,$(MAKECMDGOALS)),)
+	# We have to define this for the Makefile to work,
+	# but it doesn't actually matter what it is since we won't actually compile anything
 	EXE := blah
 endif
 
@@ -19,16 +39,18 @@ endif
 
 all: $(EXE)
 
-CP := cp
-
 CLEAN_LIST :=
-
-PATH_INTERNAL := ./internal
-PATH_INTERNAL_C := ./internal/c
 
 CXXFLAGS := -w -DFREEGLUT_STATIC
 
-CXXLIBS  := -lGL -lGLU -lX11 -lpthread -ldl -lrt
+ifeq ($(OS),lnx)
+	CXXLIBS := -lGL -lGLU -lX11 -lpthread -ldl -lrt
+endif
+
+ifeq ($(OS),win)
+	CXXLIBS := -static-libgcc -static-libstdc++
+	CXXFLAGS += -DGLEW_STATIC
+endif
 
 QB_QBX_OBJ := $(PATH_INTERNAL_C)/qbx.o
 
@@ -38,26 +60,27 @@ EXE_OBJS += $(QB_QBX_OBJ)
 
 CLEAN_LIST += $(QB_QBX_OBJ)
 
-include ./internal/c/libqb/os/$(OS)/build.mk
-include ./internal/c/parts/audio/conversion/os/$(OS)/build.mk
-include ./internal/c/parts/audio/decode/mp3_mini/os/$(OS)/build.mk
-include ./internal/c/parts/audio/decode/ogg/os/$(OS)/build.mk
-include ./internal/c/parts/audio/out/os/$(OS)/build.mk
-include ./internal/c/parts/core/os/$(OS)/build.mk
-include ./internal/c/parts/input/game_controller/os/$(OS)/build.mk
-include ./internal/c/parts/user_mods/os/$(OS)/build.mk
-include ./internal/c/parts/video/font/ttf/os/$(OS)/build.mk
+include $(PATH_INTERNAL_C)/libqb/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/audio/conversion/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/audio/decode/mp3_mini/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/audio/decode/ogg/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/audio/out/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/core/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/input/game_controller/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/user_mods/os/lnx/build.mk
+include $(PATH_INTERNAL_C)/parts/video/font/ttf/os/lnx/build.mk
 
 .PHONY: all clean
 
-QBLIB_NAME := libqb_make_
+QBLIB_NAME := libqb_make_$(QB_VERSION_UNDERSCORE)_
 
 CLEAN_LIST += $(wildcard $(PATH_INTERNAL_C)/libqb/os/$(OS)/$(QBLIB_NAME)*.o)
 
 ifdef BUILD_QB64
-	_shell := $(shell $(CP) ./internal/source/* ./internal/temp/)
+	# _shell := $(shell $(CP) ./internal/source/* ./internal/temp/)
 	DEP_FONT := y
 	DEP_ICON := y
+	DEP_SOCKETS := y
 endif
 
 ifneq ($(filter y,$(DEP_GL)),)
@@ -168,7 +191,36 @@ ifneq ($(OS),mac)
 	EXE_OBJS += $(QB_CORE_LIB)
 endif
 
-QBLIB := $(PATH_INTERNAL_C)/libqb/os/$(OS)/$(QBLIB_NAME).o
+ifeq ($(OS),win)
+	ifneq ($(filter y,$(DEP_CONSOLE_ONLY)),)
+		CXXLIBS += -mconsole
+		CXXFLAGS := $(filter-out -DFREEGLUT_STATIC,$(CXXFLAGS))
+		EXE_OBJS := $(filter-out $(QB_CORE_LIB),$(EXE_OBJS))
+	else
+		CXXLIBS += -mwindows -lopengl32 -lglu32
+		CXXFLAGS += -DFREEGLUT_STATIC -DGLEW_STATIC
+
+		CXXLIBS += -lwinmm
+	endif
+
+	ifneq ($(filter y,$(DEP_SOCKETS)),)
+		CXXLIBS += -lws2_32
+	endif
+
+	ifneq ($(filter y,$(DEP_PRINTER)),)
+		CXXLIBS += -lwinspool
+	endif
+
+	ifneq ($(filter y,$(DEP_AUDIO_OUT)),)
+		CXXLIBS += -lwinmm -lksguid -ldxguid -lole32
+	endif
+
+	ifneq ($(filter y,$(DEP_ICON)),)
+		CXXLIBS += -lgdi32
+	endif
+endif
+
+QBLIB := $(PATH_INTERNAL_C)/libqb/os/lnx/$(QBLIB_NAME).o
 
 $(QBLIB): $(PATH_INTERNAL_C)/libqb.cpp
 	$(CXX) $(CXXFLAGS) $< -c -o $@
@@ -180,7 +232,7 @@ EXE_OBJS := $(QBLIB) $(EXE_OBJS)
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
 clean:
-	rm -fr $(CLEAN_LIST)
+	$(RM) $(CLEAN_LIST)
 
 $(EXE): $(EXE_OBJS)
 	$(CXX) $(CXXFLAGS) $(EXE_OBJS) -o $@ $(CXXLIBS)

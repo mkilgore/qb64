@@ -165,7 +165,7 @@ if [ "$SDL" == "1" ]; then
   cd ../..
 else
   make clean
-  make BUILD_QB64=y
+  make OS=lnx BUILD_QB64=y
 fi
 
 if [ -e "./qb64" ]; then
